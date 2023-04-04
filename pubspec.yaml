@@ -1,5 +1,5 @@
-name: fastmu_healthcare
-description: A new Flutter project.
+name: fastmu_rajal
+description: Mobile application for Fastmu Rawat Jalan.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
@@ -10,8 +10,11 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.2
+  shared_preferences: ^2.0.20
   flutter_native_splash: ^2.2.18
   flutter_launcher_icons: "^0.12.0"
+  dio: ^5.1.0
+  camera: ^0.10.3+2
 
 dev_dependencies:
   flutter_test:
