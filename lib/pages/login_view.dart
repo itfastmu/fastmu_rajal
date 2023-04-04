@@ -284,6 +284,7 @@ class _LoginAppState extends State<LoginApp > {
                                       fontWeight: FontWeight.w600,
                                     ),
                                     keyboardType: TextInputType.text,
+                                    textInputAction: TextInputAction.go,
                                     autocorrect: false,
                                     obscureText: true,
                                     cursorColor: Colors.blueAccent,

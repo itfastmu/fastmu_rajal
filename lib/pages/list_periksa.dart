@@ -1,8 +1,13 @@
-import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:camera/camera.dart';
+import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import '../config/colors.dart';
-import './upload_photo.dart';
+import 'package:fastmu_rajal/models/pemeriksaan_model.dart';
+import 'package:fastmu_rajal/pages/upload_photo.dart';
+
+import 'package:fastmu_rajal/config/colors.dart';
+import 'package:fastmu_rajal/config/constant.dart';
 
 class ListPeriksa extends StatefulWidget {
   const ListPeriksa({super.key});
@@ -13,9 +18,79 @@ class ListPeriksa extends StatefulWidget {
 }
 
 class _ListPeriksaState extends State<ListPeriksa> {
+
+  final Dio dio = Dio();
+  late Response dataOfPemeriksaan;
+  late SharedPreferences prefs;
+
+  final searchController = TextEditingController();
+  bool isLoading = true;
+  int page = 1;
+  int perPage = 300;
+  String keyword = "";
+  String dokter = "all";
+  String poli = "all";
+  List listDataPemeriksaan = []; 
+
+  @override
+  void initState () {
+    super.initState();
+    // getPemeriksaan = _getDataPemeriksaan();
+    _getDataPemeriksaan();
+  }
+
+  void dispose () {
+    super.dispose();
+  }
+
+  Future<List<PemeriksaanModel>> _getDataPemeriksaan() async {
+    prefs = await SharedPreferences.getInstance();
+    setState((){
+      isLoading = true;
+    });
+    try {
+      dataOfPemeriksaan = await dio.get(
+        '$API_URL/rajal/antrian',
+        options: Options(
+          headers: { 'Authorization': prefs.getString('token') },
+        ),
+        queryParameters: {
+          'page': page,
+          'perPage': perPage,
+          'poli': poli,
+          'dokter': dokter,
+          'keyword': keyword
+        } 
+      );
+
+      final list = await dataOfPemeriksaan.data['data'].map<PemeriksaanModel>((list) => PemeriksaanModel.fromJson(list)).toList();
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          listDataPemeriksaan = list; 
+        });
+      }
+      return list;
+    } 
+    on DioError catch(err) {
+      setState(() {
+        isLoading = false;
+      });
+      throw Exception(err.message);
+    }
+  }
+
+  void handleSearch() {
+    setState(() {
+      keyword = searchController.text;
+    });
+    print(searchController.text);
+    _getDataPemeriksaan();
+  }
+  
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+      return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         // leading: IconButton(
@@ -75,7 +150,7 @@ class _ListPeriksaState extends State<ListPeriksa> {
                               // vertical: 2.0
                             ),
                             child: TextField(
-                              onChanged: (String txt) {},
+                              controller: searchController,
                               style: const TextStyle(
                                 fontSize: 15.5,
                               ),
@@ -112,7 +187,7 @@ class _ListPeriksaState extends State<ListPeriksa> {
                             Radius.circular(32.0),
                           ),
                           onTap: () {
-                            FocusScope.of(context).requestFocus(FocusNode());
+                            handleSearch();
                           },
                           child: const Padding(
                             padding: EdgeInsets.all(13.0),
@@ -273,10 +348,10 @@ class _ListPeriksaState extends State<ListPeriksa> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: <Widget> [
-                        const Text(
-                          '56 Data ditemukan',
+                        Text(
+                          "${listDataPemeriksaan.length == 0 ? '0' : listDataPemeriksaan.length.toString()} Data ditemukan",
                           textAlign: TextAlign.start,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                             color: Colors.grey,
@@ -296,101 +371,105 @@ class _ListPeriksaState extends State<ListPeriksa> {
                       ],
                     ),
                   ),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: 15,
-                      itemBuilder: ((context, index) {
-                        return Card(
-                          margin: const EdgeInsets.symmetric(
-                            vertical: 3.0,
-                            horizontal: 6.0
-                          ),
-                          child: Material(
-                            color: Colors.white70,
-                            animationDuration: const Duration(
-                              milliseconds: 300
+                  Expanded(                    
+                    child: !isLoading 
+                      ? ListView.builder(
+                        itemCount: listDataPemeriksaan.length,
+                        itemBuilder: ((context, index) {
+                          return Card(
+                            margin: const EdgeInsets.symmetric(
+                              vertical: 3.0,
+                              horizontal: 6.0
                             ),
-                            child: InkWell(
-                              onTap: () {},
-                              splashColor: Colors.white70,
-                              child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(
-                                  vertical: 3.0,
-                                  horizontal: 15.0
-                                ),
-                                leading: CircleAvatar(
-                                  radius: 22.0,
-                                  backgroundColor: Colors.cyan,
-                                  child: Text(
-                                    '$index',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w700
+                            child: Material(
+                              color: Colors.white70,
+                              animationDuration: const Duration(
+                                milliseconds: 300
+                              ),
+                              child: InkWell(
+                                onTap: () {},
+                                splashColor: Colors.white70,
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 3.0,
+                                    horizontal: 15.0
+                                  ),
+                                  leading: CircleAvatar(
+                                    radius: 22.0,
+                                    backgroundColor: Colors.cyan,
+                                    child: Text(
+                                      listDataPemeriksaan[index].antrian.toString(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700
+                                      ),
                                     ),
                                   ),
-                                ),
-                                title: Text(
-                                  'Nama Lengkap Pasien $index',
-                                  style: const TextStyle(
-                                    color: Colors.black87,
-                                    fontSize: 15.0,
-                                    fontWeight: FontWeight.w600
+                                  title: Text(
+                                    listDataPemeriksaan[index].nama,
+                                    style: const TextStyle(
+                                      color: Colors.black87,
+                                      fontSize: 15.0,
+                                      fontWeight: FontWeight.w600
+                                    ),
                                   ),
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 4.0
-                                      ),
-                                      child: Text(
-                                        'dr. Hening Wijayanti, Sp.N',
-                                        style: TextStyle(
-                                          fontSize: 13.0,
-                                          fontWeight: FontWeight.w500,
-                                          color: MyColor.primary,
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 4.0
+                                        ),
+                                        child: Text(
+                                          listDataPemeriksaan[index].dokter,
+                                          style: TextStyle(
+                                            fontSize: 13.0,
+                                            fontWeight: FontWeight.w500,
+                                            color: MyColor.primary,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    const Text(
-                                      'Poliklinik Penyakit Dalam | 15.00 - 17.00',
-                                      style: TextStyle(
-                                        fontSize: 13.0,
+                                      Text(
+                                        "${listDataPemeriksaan[index].klinik} | ${listDataPemeriksaan[index].mulai} - ${listDataPemeriksaan[index].selesai}",
+                                        style: const TextStyle(
+                                          fontSize: 13.0,
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                trailing: Material(
-                                  color: Colors.white,
-                                  child: InkWell(
-                                    borderRadius: const BorderRadius.all(
-                                      Radius.circular(10.0)
-                                    ),
-                                    onTap: () async {
-                                      await availableCameras().then((cameras) => Navigator.push(context,
-                                        MaterialPageRoute(
-                                          builder: (_) => UploadPhoto(
-                                            camera: cameras.first
-                                          ) 
-                                        )
-                                      ));
-                                    },
-                                    child: const Padding(
-                                      padding: EdgeInsets.all(5.0),
-                                      child: Icon(
-                                        Icons.photo_camera,
-                                        color: Colors.black54,
+                                    ],
+                                  ),
+                                  trailing: Material(
+                                    color: Colors.white,
+                                    child: InkWell(
+                                      borderRadius: const BorderRadius.all(
+                                        Radius.circular(10.0)
+                                      ),
+                                      onTap: () async {
+                                        await availableCameras().then((cameras) => Navigator.push(context,
+                                          MaterialPageRoute(
+                                            builder: (_) => UploadPhoto(
+                                              camera: cameras.first
+                                            ) 
+                                          )
+                                        ));
+                                      },
+                                      child: const Padding(
+                                        padding: EdgeInsets.all(5.0),
+                                        child: Icon(
+                                          Icons.photo_camera,
+                                          color: Colors.black54,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        );
-                      })
-                    ),
+                          );
+                        })
+                      )
+                    : Center(
+                        child: CircularProgressIndicator(),
+                      ) 
                   ),
                 ],
               ),

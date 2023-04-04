@@ -54,7 +54,14 @@ class _InitAppState extends State<InitApp> {
         } 
 
       } on DioError catch(e) {
-        print(e.message);
+
+        if (e.response!.data.containsKey('token_expired') && e.response!.data['token_expired']) {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            LoginApp.nameRoute, 
+            ModalRoute.withName(LoginApp.nameRoute)
+          );
+        }
       }
 
     } else {

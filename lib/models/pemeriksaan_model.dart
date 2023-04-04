@@ -12,7 +12,7 @@ class PemeriksaanModel {
     required this.selesai,
   });
 
-  factory PemeriksaanModel.fromJson(Map<String, dynamic> json) {
+  factory PemeriksaanModel.fromJson(Map<String, dynamic?> json) {
     return PemeriksaanModel(
       id: json['id'],
       antrian: json['nomer'],
