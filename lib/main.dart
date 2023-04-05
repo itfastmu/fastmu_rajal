@@ -34,7 +34,7 @@ class MainApp extends StatelessWidget {
       routes: {
         '/' : (context) => const InitApp(),
         LoginApp.nameRoute : (context) => const LoginApp(),
-        ListPeriksa.nameRoute : (context) => const ListPeriksa()
+        ListPeriksa.nameRoute : (context) => ListPeriksa()
       },
     );
   }

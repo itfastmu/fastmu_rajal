@@ -1,93 +1,17 @@
+import 'package:fastmu_rajal/controllers/pemeriksaan_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
-import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
-import 'package:fastmu_rajal/models/pemeriksaan_model.dart';
+import 'package:get/get.dart';
 import 'package:fastmu_rajal/pages/upload_photo.dart';
-
 import 'package:fastmu_rajal/config/colors.dart';
-import 'package:fastmu_rajal/config/constant.dart';
 
-class ListPeriksa extends StatefulWidget {
-  const ListPeriksa({super.key});
+class ListPeriksa extends StatelessWidget {
+  ListPeriksa({super.key});
   static const nameRoute = '/list';
 
-  @override
-  State<ListPeriksa> createState() => _ListPeriksaState();
-}
-
-class _ListPeriksaState extends State<ListPeriksa> {
-
-  final Dio dio = Dio();
-  late Response dataOfPemeriksaan;
-  late SharedPreferences prefs;
-
   final searchController = TextEditingController();
-  bool isLoading = true;
-  int page = 1;
-  int perPage = 300;
-  String keyword = "";
-  String dokter = "all";
-  String poli = "all";
-  List listDataPemeriksaan = []; 
+  final PemeriksaanController pemeriksaanController = Get.put(PemeriksaanController());
 
-  @override
-  void initState () {
-    super.initState();
-    // getPemeriksaan = _getDataPemeriksaan();
-    _getDataPemeriksaan();
-  }
-
-  void dispose () {
-    super.dispose();
-  }
-
-  Future<List<PemeriksaanModel>> _getDataPemeriksaan() async {
-    prefs = await SharedPreferences.getInstance();
-    setState((){
-      isLoading = true;
-    });
-    try {
-      dataOfPemeriksaan = await dio.get(
-        '$API_URL/rajal/antrian',
-        options: Options(
-          headers: { 'Authorization': prefs.getString('token') },
-        ),
-        queryParameters: {
-          'page': page,
-          'perPage': perPage,
-          'poli': poli,
-          'dokter': dokter,
-          'keyword': keyword
-        } 
-      );
-
-      final list = await dataOfPemeriksaan.data['data'].map<PemeriksaanModel>((list) => PemeriksaanModel.fromJson(list)).toList();
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-          listDataPemeriksaan = list; 
-        });
-      }
-      return list;
-    } 
-    on DioError catch(err) {
-      setState(() {
-        isLoading = false;
-      });
-      throw Exception(err.message);
-    }
-  }
-
-  void handleSearch() {
-    setState(() {
-      keyword = searchController.text;
-    });
-    print(searchController.text);
-    _getDataPemeriksaan();
-  }
-  
   @override
   Widget build(BuildContext context) {
       return Scaffold(
@@ -187,7 +111,7 @@ class _ListPeriksaState extends State<ListPeriksa> {
                             Radius.circular(32.0),
                           ),
                           onTap: () {
-                            handleSearch();
+                            pemeriksaanController.handleSearch(searchController.text);
                           },
                           child: const Padding(
                             padding: EdgeInsets.all(13.0),
@@ -241,14 +165,15 @@ class _ListPeriksaState extends State<ListPeriksa> {
                                         vertical: 6.0,
                                         horizontal: 4.0
                                       ),
-                                      child: Text(
-                                        'Klinik Saraf / Neurologi',
+                                      child: Obx(() => Text(
+                                        pemeriksaanController.selectedKlinik['label'].toString(),
+                                        textAlign: TextAlign.center,
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
                                           fontSize: 15.0,
                                           color: Colors.indigo[800],
                                           fontWeight: FontWeight.w600
-                                        ),
+                                        )),
                                       ),
                                     ),
                                   ],
@@ -293,15 +218,15 @@ class _ListPeriksaState extends State<ListPeriksa> {
                                         vertical: 6.0,
                                         horizontal: 4.0
                                       ),
-                                      child: Text(
-                                        'dr. Hening Wijayanti, Sp.N',
+                                      child: Obx(() => Text(
+                                        pemeriksaanController.selectedDokter['label'].toString(),
                                         textAlign: TextAlign.center,
                                         overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
                                           fontSize: 15.0,
                                           color: Colors.indigo[800],
                                           fontWeight: FontWeight.w600
-                                        ),
+                                        )),
                                       ),
                                     ),
                                   ],
@@ -348,15 +273,15 @@ class _ListPeriksaState extends State<ListPeriksa> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: <Widget> [
-                        Text(
-                          "${listDataPemeriksaan.length == 0 ? '0' : listDataPemeriksaan.length.toString()} Data ditemukan",
+                        Obx(() => Text(
+                          "${pemeriksaanController.listDataPemeriksaan.length == 0 ? '0' : pemeriksaanController.listDataPemeriksaan.length.toString()} Data ditemukan",
                           textAlign: TextAlign.start,
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                             color: Colors.grey,
                           ),
-                        ),
+                        )),
                         Material(
                           color: Colors.white70,
                           child: InkWell(
@@ -371,10 +296,14 @@ class _ListPeriksaState extends State<ListPeriksa> {
                       ],
                     ),
                   ),
-                  Expanded(                    
-                    child: !isLoading 
-                      ? ListView.builder(
-                        itemCount: listDataPemeriksaan.length,
+                  Expanded(            
+                    child: Obx((){
+                    return pemeriksaanController.isLoading.value
+                      ? Center(
+                          child: CircularProgressIndicator(),
+                        )
+                      : ListView.builder(
+                        itemCount: pemeriksaanController.listDataPemeriksaan.length,
                         itemBuilder: ((context, index) {
                           return Card(
                             margin: const EdgeInsets.symmetric(
@@ -398,7 +327,7 @@ class _ListPeriksaState extends State<ListPeriksa> {
                                     radius: 22.0,
                                     backgroundColor: Colors.cyan,
                                     child: Text(
-                                      listDataPemeriksaan[index].antrian.toString(),
+                                      pemeriksaanController.listDataPemeriksaan[index].antrian.toString(),
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w700
@@ -406,7 +335,7 @@ class _ListPeriksaState extends State<ListPeriksa> {
                                     ),
                                   ),
                                   title: Text(
-                                    listDataPemeriksaan[index].nama,
+                                    pemeriksaanController.listDataPemeriksaan[index].nama,
                                     style: const TextStyle(
                                       color: Colors.black87,
                                       fontSize: 15.0,
@@ -421,7 +350,7 @@ class _ListPeriksaState extends State<ListPeriksa> {
                                           vertical: 4.0
                                         ),
                                         child: Text(
-                                          listDataPemeriksaan[index].dokter,
+                                          pemeriksaanController.listDataPemeriksaan[index].dokter,
                                           style: TextStyle(
                                             fontSize: 13.0,
                                             fontWeight: FontWeight.w500,
@@ -430,7 +359,7 @@ class _ListPeriksaState extends State<ListPeriksa> {
                                         ),
                                       ),
                                       Text(
-                                        "${listDataPemeriksaan[index].klinik} | ${listDataPemeriksaan[index].mulai} - ${listDataPemeriksaan[index].selesai}",
+                                        "${pemeriksaanController.listDataPemeriksaan[index].klinik} | ${pemeriksaanController.listDataPemeriksaan[index].mulai.substring(0, 5)} - ${pemeriksaanController.listDataPemeriksaan[index].selesai.substring(0, 5)}",
                                         style: const TextStyle(
                                           fontSize: 13.0,
                                         ),
@@ -466,10 +395,8 @@ class _ListPeriksaState extends State<ListPeriksa> {
                             ),
                           );
                         })
-                      )
-                    : Center(
-                        child: CircularProgressIndicator(),
-                      ) 
+                      );
+                    })
                   ),
                 ],
               ),
@@ -482,13 +409,15 @@ class _ListPeriksaState extends State<ListPeriksa> {
 }
 
 class OptionOfPoliklinik extends StatefulWidget {
-  const OptionOfPoliklinik({super.key});
+  OptionOfPoliklinik({super.key});
 
   @override
-  State<OptionOfPoliklinik> createState() => _OptionOPoliklinikState();
+  State<OptionOfPoliklinik> createState() => _OptionOfPoliklinikState();
 }
 
-class _OptionOPoliklinikState extends State<OptionOfPoliklinik> {
+class _OptionOfPoliklinikState extends State<OptionOfPoliklinik> {
+  final PemeriksaanController pemeriksaanController = Get.put(PemeriksaanController());
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -525,40 +454,54 @@ class _OptionOPoliklinikState extends State<OptionOfPoliklinik> {
                 horizontal: 5.0,
                 vertical: 10.0
               ),
-              child: ListView.builder(
-                itemCount: 5,
-                itemBuilder: (context, index) {
-                  return Material(
-                    color: Colors.white,
-                    child: InkWell(
-                      onTap: () {},
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10.0
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Poliklinik $index',
-                              style: const TextStyle(
-                                fontSize: 14.0
+              child: Obx(() {
+                return pemeriksaanController.listDataPoli.length == 0
+                ? Center(
+                    child: CircularProgressIndicator()
+                  )
+                : ListView.builder(
+                  itemCount: pemeriksaanController.listDataPoli.length,
+                  itemBuilder: (context, index) {
+                    return Material(
+                      color: Colors.white70,
+                      child: InkWell(
+                        onTap: () {
+                          pemeriksaanController.changePoli(
+                            pemeriksaanController.listDataPoli[index]
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10.0
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                pemeriksaanController.listDataPoli[index].nama,
+                                style: const TextStyle(
+                                  fontSize: 14.0
+                                ),
                               ),
-                            ),
-                            Radio(
-                              activeColor: MyColor.primary,
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              value: index,
-                              groupValue: 0,
-                              onChanged: (value) {},
-                            )
-                          ],
+                              Radio(
+                                activeColor: MyColor.primary,
+                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                value: pemeriksaanController.listDataPoli[index].kode,
+                                groupValue: pemeriksaanController.selectedKlinik['value'],
+                                onChanged: (value) {
+                                  pemeriksaanController.changePoli(
+                                    pemeriksaanController.listDataPoli[index]
+                                  );
+                                },
+                              )
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
-              ),
+                    );
+                  },
+                );
+              }) 
             ) 
           )
         ],
