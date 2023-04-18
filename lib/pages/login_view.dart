@@ -49,18 +49,22 @@ class _LoginAppState extends State<LoginApp > {
           setState(() {
             _errorMessage = response.data['message'];
           });
+          return;
         } 
-        else {
+        else if(response.data['nama_group'] != "Perawat Rajal")  {
           setState(() {
-            _errorMessage = "";
+            _errorMessage = "Akses ditolak !";
           });
-          prefs = await SharedPreferences.getInstance();
-          await prefs.setString('token', response.data['token']);
-          await prefs.setString('nama_user', response.data['nama']);
-          Navigator.popAndPushNamed(context, 
-            ListPeriksa.nameRoute
-          );
+          return;
         }
+
+        prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', response.data['token']);
+        await prefs.setString('nama_user', response.data['nama']);
+        Navigator.popAndPushNamed(context, 
+          ListPeriksa.nameRoute
+        );
+
       } on DioError catch (e) {
         print(e.message);
       }
@@ -283,6 +287,7 @@ class _LoginAppState extends State<LoginApp > {
                                       fontSize: 17,
                                       fontWeight: FontWeight.w600,
                                     ),
+                                    onEditingComplete:() => handleLogin(),
                                     keyboardType: TextInputType.text,
                                     textInputAction: TextInputAction.go,
                                     autocorrect: false,

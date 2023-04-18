@@ -55,7 +55,7 @@ class _InitAppState extends State<InitApp> {
 
       } on DioError catch(e) {
 
-        if (e.response!.data.containsKey('token_expired') && e.response!.data['token_expired']) {
+        if (e.response?.data.containsKey('token_expired') && e.response!.data['token_expired']) {
           Navigator.pushNamedAndRemoveUntil(
             context,
             LoginApp.nameRoute, 

@@ -2,28 +2,37 @@ import 'package:fastmu_rajal/controllers/pemeriksaan_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:get/get.dart';
+
 import 'package:fastmu_rajal/pages/upload_photo.dart';
+import 'package:fastmu_rajal/pages/login_view.dart';
+import 'package:fastmu_rajal/pages/list_berkas.dart';
+
 import 'package:fastmu_rajal/config/colors.dart';
 
-class ListPeriksa extends StatelessWidget {
+class ListPeriksa extends StatefulWidget {
   ListPeriksa({super.key});
   static const nameRoute = '/list';
 
+  @override
+  State<ListPeriksa> createState() => _ListPeriksaState();
+}
+
+class _ListPeriksaState extends State<ListPeriksa> {
   final searchController = TextEditingController();
+  late FocusNode searchFocus = FocusNode();
   final PemeriksaanController pemeriksaanController = Get.put(PemeriksaanController());
+
+  @override
+  void initState() {
+    searchFocus.unfocus();
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
       return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        // leading: IconButton(
-        //   onPressed: (){},
-        //   icon: const Icon(
-        //     Icons.chevron_left,
-        //     color: Colors.white,
-        //   )
-        // ),
         centerTitle: true,
         shadowColor: Colors.blueGrey[100],
         title: const Text(
@@ -34,6 +43,52 @@ class ListPeriksa extends StatelessWidget {
           ),
         ),
         backgroundColor: MyColor.primary,
+        actions: [
+          IconButton(
+            onPressed: (){
+              showDialog(
+                context: context,
+                builder:(context) {
+                  return AlertDialog(
+                    title: Text('CONFIRM'),
+                    content: const Text(
+                      "Keluar dari aplikasi ?",
+                    ),
+                    actions: [
+                      OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text(
+                          'Tidak',
+                          style: TextStyle(
+                            color: Colors.blueGrey
+                          ),
+                        ),
+                      ),
+                      OutlinedButton(
+                        onPressed: (){
+                          pemeriksaanController.handleLogout().then((value) => Navigator.pushNamedAndRemoveUntil(
+                            context, 
+                            LoginApp.nameRoute,
+                            ModalRoute.withName(LoginApp.nameRoute)
+                          ));
+                        },
+                        child: const Text(
+                          'Ya',
+                          style: TextStyle(
+                            color: Colors.blueGrey
+                          ),
+                        )
+                      ),
+                    ],
+                  );
+                } 
+              );
+            },
+            icon: const Icon(
+              Icons.logout
+            )
+          )
+        ],
       ),
       body: Column(
         children: [
@@ -75,10 +130,17 @@ class ListPeriksa extends StatelessWidget {
                             ),
                             child: TextField(
                               controller: searchController,
+                              focusNode: searchFocus,
+                              onTapOutside: (event) => searchFocus.unfocus(),
+                              onEditingComplete: () {
+                                pemeriksaanController.handleSearch(searchController.text);
+                                searchFocus.unfocus();
+                              },
                               style: const TextStyle(
                                 fontSize: 15.5,
                               ),
                               cursorColor: Colors.indigo,
+                              textInputAction: TextInputAction.search,
                               decoration: InputDecoration(
                                 hintStyle: TextStyle(
                                   color: Colors.grey[500]
@@ -112,16 +174,17 @@ class ListPeriksa extends StatelessWidget {
                           ),
                           onTap: () {
                             pemeriksaanController.handleSearch(searchController.text);
+                            searchFocus.unfocus();
                           },
                           child: const Padding(
                             padding: EdgeInsets.all(13.0),
                             child: Icon(Icons.search,
                                 size: 23,
                                 color: Colors.white,
+                            ),
                           ),
                         ),
                       ),
-                    ),
                     ),
                   ],
                 ),
@@ -258,7 +321,7 @@ class ListPeriksa extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: MediaQuery.of(context).size.width,
+                    width: double.infinity,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 18.0,
                       vertical: 12.0
@@ -274,7 +337,7 @@ class ListPeriksa extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: <Widget> [
                         Obx(() => Text(
-                          "${pemeriksaanController.listDataPemeriksaan.length == 0 ? '0' : pemeriksaanController.listDataPemeriksaan.length.toString()} Data ditemukan",
+                          "${pemeriksaanController.isLoading == true || pemeriksaanController.listDataPemeriksaan.length == 0 ? '0' : pemeriksaanController.listDataPemeriksaan.length.toString()} Data ditemukan",
                           textAlign: TextAlign.start,
                           style: const TextStyle(
                             fontSize: 14,
@@ -302,6 +365,11 @@ class ListPeriksa extends StatelessWidget {
                       ? Center(
                           child: CircularProgressIndicator(),
                         )
+                      :
+                      pemeriksaanController.listDataPemeriksaan.length == 0 
+                      ? Center(
+                          child: Text("Data tidak ditemukan"),
+                        ) 
                       : ListView.builder(
                         itemCount: pemeriksaanController.listDataPemeriksaan.length,
                         itemBuilder: ((context, index) {
@@ -316,7 +384,12 @@ class ListPeriksa extends StatelessWidget {
                                 milliseconds: 300
                               ),
                               child: InkWell(
-                                onTap: () {},
+                                onTap: () async {
+                                  pemeriksaanController.changePasien(
+                                    pemeriksaanController.listDataPemeriksaan[index]
+                                  );
+                                  Navigator.pushNamed(context, ListBerkas.nameRoute);
+                                },
                                 splashColor: Colors.white70,
                                 child: ListTile(
                                   contentPadding: const EdgeInsets.symmetric(
@@ -334,12 +407,33 @@ class ListPeriksa extends StatelessWidget {
                                       ),
                                     ),
                                   ),
-                                  title: Text(
-                                    pemeriksaanController.listDataPemeriksaan[index].nama,
-                                    style: const TextStyle(
-                                      color: Colors.black87,
-                                      fontSize: 15.0,
-                                      fontWeight: FontWeight.w600
+                                  title: RichText(
+                                    text: TextSpan(
+                                      children: [
+                                        TextSpan(
+                                          text: pemeriksaanController.listDataPemeriksaan[index].no_rm.toString().padLeft(6, '0'),
+                                          style: const TextStyle(
+                                            color: Colors.orange,
+                                            fontSize: 15.0,
+                                            fontWeight: FontWeight.w600
+                                          ),
+                                        ),
+                                        const TextSpan(
+                                          text: " - ",
+                                          style: TextStyle(
+                                            color: Colors.grey,
+                                            fontSize: 15.0,
+                                          ),
+                                        ),
+                                        TextSpan(
+                                          text: pemeriksaanController.listDataPemeriksaan[index].nama,
+                                          style: const TextStyle(
+                                            color: Colors.black87,
+                                            fontSize: 15.0,
+                                            fontWeight: FontWeight.w600
+                                          ),
+                                        )
+                                      ],
                                     ),
                                   ),
                                   subtitle: Column(
@@ -373,10 +467,11 @@ class ListPeriksa extends StatelessWidget {
                                         Radius.circular(10.0)
                                       ),
                                       onTap: () async {
+                                        pemeriksaanController.changePasien(pemeriksaanController.listDataPemeriksaan[index]);
                                         await availableCameras().then((cameras) => Navigator.push(context,
                                           MaterialPageRoute(
-                                            builder: (_) => UploadPhoto(
-                                              camera: cameras.first
+                                            builder: (_) => TakePictureScreen(
+                                              camera: cameras
                                             ) 
                                           )
                                         ));
@@ -404,7 +499,7 @@ class ListPeriksa extends StatelessWidget {
           ),
         ],
       ),
-    );
+        );
   }
 }
 
@@ -469,6 +564,7 @@ class _OptionOfPoliklinikState extends State<OptionOfPoliklinik> {
                           pemeriksaanController.changePoli(
                             pemeriksaanController.listDataPoli[index]
                           );
+                          Navigator.pop(context);
                         },
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
@@ -492,6 +588,7 @@ class _OptionOfPoliklinikState extends State<OptionOfPoliklinik> {
                                   pemeriksaanController.changePoli(
                                     pemeriksaanController.listDataPoli[index]
                                   );
+                                  Navigator.pop(context);
                                 },
                               )
                             ],
@@ -519,6 +616,8 @@ class OptionOfDokter extends StatefulWidget {
 }
 
 class _OptionOfDokterState extends State<OptionOfDokter> {
+  final PemeriksaanController pemeriksaanController = Get.put(PemeriksaanController());
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -555,40 +654,52 @@ class _OptionOfDokterState extends State<OptionOfDokter> {
                 horizontal: 5.0,
                 vertical: 10.0
               ),
-              child: ListView.builder(
-                itemCount: 5,
-                itemBuilder: (context, index) {
-                  return Material(
-                    color: Colors.white,
-                    child: InkWell(
-                      onTap: () {},
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10.0
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Dokter $index',
-                              style: const TextStyle(
-                                fontSize: 14.0
+              child: Obx(() {
+                return pemeriksaanController.listDataDokter.length == 0
+                ? Center(
+                    child: Text("Tidak ada jadwal dokter")
+                  )
+                :
+                ListView.builder(
+                  itemCount: pemeriksaanController.listDataDokter.length,
+                  itemBuilder: (context, index) {
+                    return Material(
+                      color: Colors.white,
+                      child: InkWell(
+                        onTap: () {},
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10.0
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                pemeriksaanController.listDataDokter[index].nama,
+                                style: const TextStyle(
+                                  fontSize: 14.0
+                                ),
                               ),
-                            ),
-                            Radio(
-                              activeColor: MyColor.primary,
-                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              value: index,
-                              groupValue: 0,
-                              onChanged: (value) {},
-                            )
-                          ],
+                              Radio(
+                                activeColor: MyColor.primary,
+                                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                value: pemeriksaanController.listDataDokter[index].kode,
+                                groupValue: pemeriksaanController.selectedDokter['value'],
+                                onChanged: (value) {
+                                  pemeriksaanController.changePoli(
+                                    pemeriksaanController.listDataPoli[index]
+                                  );
+                                  Navigator.pop(context);
+                                },
+                              )
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
-              ),
+                    );
+                  },
+                );
+              }),
             ) 
           )
         ],

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'pages/initial_app.dart';
-import 'pages/login_view.dart';
-import 'pages/list_periksa.dart';
+import 'package:fastmu_rajal/pages/initial_app.dart';
+import 'package:fastmu_rajal/pages/login_view.dart';
+import 'package:fastmu_rajal/pages/list_periksa.dart';
+import 'package:fastmu_rajal/pages/list_berkas.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,9 +13,10 @@ void main() {
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
+      // Status Bar
       statusBarColor: Color(0xff263C92),
       statusBarIconBrightness: Brightness.light,
-      statusBarBrightness: Brightness.light
+      statusBarBrightness: Brightness.light,
     )
   );
 
@@ -34,7 +36,8 @@ class MainApp extends StatelessWidget {
       routes: {
         '/' : (context) => const InitApp(),
         LoginApp.nameRoute : (context) => const LoginApp(),
-        ListPeriksa.nameRoute : (context) => ListPeriksa()
+        ListPeriksa.nameRoute : (context) => ListPeriksa(),
+        ListBerkas.nameRoute : (context) => ListBerkas(),
       },
     );
   }
